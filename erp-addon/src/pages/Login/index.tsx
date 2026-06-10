@@ -1,29 +1,38 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../../api/auth.api";
-import "./login.scss";
-import { Image } from "antd";
+import { Image, message } from "antd";
 
-export default function LoginPage() {
+import { login } from "../../api/auth.api";
+import { useAuth } from "../../context/AuthContext";
+import "./login.scss";
+
+const LoginPage = () => {
+  const { saveAuth } = useAuth();
   const navigate = useNavigate();
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [email, setemail] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+
     try {
-      const result = await login(email, password);
-      localStorage.setItem("accessToken", result.token);
-      localStorage.setItem("refreshToken", result.refreshToken);
-      navigate("/tasks");
+      setLoading(true);
+
+      const data = await login(email, password);
+
+      if (data.return) {
+        saveAuth(data.token, data.refreshToken);
+        message.success(data.message ?? "Đăng nhập thành công");
+        navigate("/tasks");
+      } else {
+        message.error(data.message ?? "Tên đăng nhập hoặc mật khẩu không đúng.");
+      }
     } catch (err) {
-      setError("Tên đăng nhập hoặc mật khẩu không đúng.");
       console.error(err);
+      message.error("Tên đăng nhập hoặc mật khẩu không đúng.");
     } finally {
       setLoading(false);
     }
@@ -36,11 +45,11 @@ export default function LoginPage() {
         <div className="lp-left">
           <div className="lp-logo">
             <div className="lp-logo-mark">
-                <Image
+              <Image
                 alt="svg image"
                 width={200}
                 src="src/assets/image/enrich_co_inc_logo.jpg"
-                />
+              />
             </div>
             <span className="lp-logo-text">ENRICH CO ERP</span>
           </div>
@@ -75,7 +84,7 @@ export default function LoginPage() {
                 placeholder="Email"
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setemail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -114,12 +123,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {error && <p className="lp-error">{error}</p>}
-
-            {/* <div className="lp-row">
-              <a href="/forgot-password" className="lp-forgot">Quên mật khẩu?</a>
-            </div> */}
-
             <button className="lp-btn" type="submit" disabled={loading}>
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
@@ -130,4 +133,6 @@ export default function LoginPage() {
       </div>
     </div>
   );
-}
+};
+
+export default LoginPage;
