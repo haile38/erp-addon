@@ -52,13 +52,32 @@ export const STATUS_CONFIG: Record<TaskStatus, { label: string; icon: React.Reac
 };
 
 export const MI_VERSION_OPTIONS = [
-  { label: "1.1.1", value: "1.1.1" },
-  { label: "1.2.0", value: "1.2.0" },
-  { label: "2.2.2", value: "2.2.2" },
+  { label: "0.0.3.3", value: "0.0.3.3" },   
+  { label: "2.4.2.0", value: "2.4.2.0" },
+  { label: "2.2.2.0", value: "2.2.2.0" },
+  //  { label: "2.4.9.0", value: "2.4.9.0" },
+  { label: "2.4.16.0", value: "2.4.16.0" },
+  { label: "2.4.18.0", value: "2.4.18.0" },
+
+
 ];
 
 export const DEVICE_OPTIONS = [
-  { label: "Clover", value: "clover" },
-  { label: "Pax", value: "pax" },
-  { label: "Dejavoo", value: "dejavoo" },
+  { label: "Clover Mini", value: "clover_mini" },
+  { label: "Clover Flex", value: "clover_flex" },
+  { label: "Clover Compact", value: "clover_compact" },
+  { label: "Pax A920", value: "pax_a920" },
+  { label: "Pax A80", value: "pax_a80" },
+  { label: "Pax Aries 8", value: "pax_aries8" },
+  { label: "Dejavoo Z11", value: "dejavoo Z11" },
+];
+
+
+export const RESOLVE_OPTIONS = [
+  { key: "restart_app",        label: "Restart app" },
+  { key: "reset_network",      label: "Reset network" },
+  { key: "reconnect_terminal", label: "Reconnect terminal" },
+  { key: "update_config",      label: "Update config" },
+  { key: "escalate_l2",        label: "Escalate to L2" },
+  { key: "resolved",           label: "Resolved" },
 ];

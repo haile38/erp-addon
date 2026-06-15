@@ -5,6 +5,7 @@ import { Image, message } from "antd";
 import { login } from "../../api/auth.api";
 import { useAuth } from "../../context/AuthContext";
 import "./login.scss";
+import { getListTeamMember } from "../../api/task.api";
 
 const LoginPage = () => {
   const { saveAuth } = useAuth();
@@ -14,6 +15,17 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const teamParams = {
+    "isNotTeam": true,
+    "page": 1,
+    "pageSize": 100,
+    "search": "",
+    "showFullMember": true,
+    "trueteamId": null,
+    "ticketTypeId": "0",
+    "workstationId": "1"
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,14 +37,37 @@ const LoginPage = () => {
 
       if (data.return) {
         saveAuth(data.token, data.refreshToken);
-        message.success(data.message ?? "Đăng nhập thành công");
+        try {
+          const userdatas = await getListTeamMember(teamParams);
+
+          const teamMember = userdatas.data.find(
+            (item: any) => item.email.toLowerCase() === email.toLowerCase()
+          );
+
+          if (teamMember) {
+            saveAuth(data.token, data.refreshToken, {
+              name: teamMember.userName,
+              email,
+              userName: teamMember.userName,
+              id: teamMember.id
+            });
+
+            message.success(`Welcome ${teamMember.userName}`);
+          } else {
+            message.success(data.message ?? "Login success");
+          }
+        } catch {
+          message.success(data.message ?? "Login success");
+        }
+
         navigate("/tasks");
+
       } else {
-        message.error(data.message ?? "Tên đăng nhập hoặc mật khẩu không đúng.");
+        message.error(data.message ?? "");
       }
     } catch (err) {
       console.error(err);
-      message.error("Tên đăng nhập hoặc mật khẩu không đúng.");
+      message.error("Incorrect username or password.");
     } finally {
       setLoading(false);
     }
@@ -56,13 +91,12 @@ const LoginPage = () => {
 
           <div className="lp-hero">
             <h1 className="lp-heading">
-              Quản lý<br />
-              <em>daily task</em><br />
-              mỗi ngày.
+              Manage<br />
+              <em> your daily task</em><br />
+              everyday.
             </h1>
             <p className="lp-sub">
-              Theo dõi công việc của bạn<br />
-              một cách đơn giản và hiệu quả.
+            Track your work in a simple and effective way.
             </p>
           </div>
 
@@ -71,12 +105,12 @@ const LoginPage = () => {
 
         {/* Right panel */}
         <div className="lp-right">
-          <h2 className="lp-title">Đăng nhập</h2>
-          <p className="lp-desc">Nhập thông tin để tiếp tục</p>
+          <h2 className="lp-title">Login</h2>
+          <p className="lp-desc">Enter your information to continue.</p>
 
           <form onSubmit={handleSubmit}>
             <div className="lp-field">
-              <label className="lp-label" htmlFor="email">Tên đăng nhập</label>
+              <label className="lp-label" htmlFor="email">Email</label>
               <input
                 id="email"
                 className="lp-input"
@@ -90,7 +124,7 @@ const LoginPage = () => {
             </div>
 
             <div className="lp-field">
-              <label className="lp-label" htmlFor="password">Mật khẩu</label>
+              <label className="lp-label" htmlFor="password">Password</label>
               <div className="lp-pw-wrap">
                 <input
                   id="password"
@@ -124,11 +158,11 @@ const LoginPage = () => {
             </div>
 
             <button className="lp-btn" type="submit" disabled={loading}>
-              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+              {loading ? " Login..." : "Login"}
             </button>
           </form>
 
-          <p className="lp-footer">Gặp sự cố? Liên hệ quản trị viên</p>
+          <p className="lp-footer">Having trouble? Contact the administrator.</p>
         </div>
       </div>
     </div>

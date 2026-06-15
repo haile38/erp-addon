@@ -23,6 +23,18 @@ export const api = axios.create({
   },
 });
 
+
+// gọi api ticket
+export const ticket = axios.create({
+  baseURL: "/ticket",
+  timeout: 30000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+
+
 // ─── Refresh token ────────────────────────────────────────────────────────────
 async function refreshAccessToken(): Promise<string> {
   const refreshToken = localStorage.getItem("refreshToken");
@@ -48,6 +60,19 @@ async function refreshAccessToken(): Promise<string> {
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem("token"); // ✅ cùng key với lúc login lưu
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+ticket.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

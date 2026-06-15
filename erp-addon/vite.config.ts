@@ -14,17 +14,20 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
 
-        rewrite: (path) =>
-          path.replace(
-            /^\/auth/,
-            "/api/authentication"
-          ),
+        rewrite: (path) => path.replace(/^\/auth/, "/api/authentication"),
       },
 
       "/api": {
         target: "https://imsnext-portal.enrichco.us",
         changeOrigin: true,
         secure: true,
+      },
+
+      "/ticket": {
+        target: "https://imsnext-ticket.enrichco.us",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/ticket/, ""), 
       },
     },
   },
