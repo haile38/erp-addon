@@ -8,3 +8,11 @@ export async function getListTeamMember(params: {}){
   const response = await ticket.post("/api/TeamMembers/ListTeamMembers", params);
   return response.data;
 }
+export async function CreateOrUpdate(params: {}){
+  const response = await ticket.post("/api/Ticket/CreateOrUpdate", params);
+  return response.data;
+}
+export async function updateTicketState(params: any){
+    const response = await ticket.post("/api/Ticket/UpdateTicketStage", params)
+    return response.data;
+}

@@ -52,6 +52,8 @@ const LoginPage = () => {
               id: teamMember.id
             });
 
+            console.log(teamMember.id)
+
             message.success(`Welcome ${teamMember.userName}`);
           } else {
             message.success(data.message ?? "Login success");

@@ -5,7 +5,8 @@ import {
   PlusOutlined, ShopOutlined, BugOutlined,
   PhoneOutlined, EditOutlined, CheckOutlined,
 } from "@ant-design/icons";
-import { getListMerchant } from "../../api/task.api";
+import { getListMerchant, CreateOrUpdate } from "../../api/task.api";
+import { useAuth } from "../../context/AuthContext";
 import TaskList from "./TaskList";
 import "./task.scss";
 import {
@@ -14,8 +15,26 @@ import {
   ISSUE_OPTIONS,
   MI_VERSION_OPTIONS,
   DEVICE_OPTIONS,
-  RESOLVE_OPTIONS
+  RESOLVE_OPTIONS,
+  TICKET_PRIORITY,
+  TICKET_DIRECTION,
+  TICKET_ATTRIBUTES,
+  TICKET_TYPE,
 } from "../../constants/task.constants";
+
+// ─── Fixed defaults for fields without dedicated UI yet ────────────────
+// Priority is always "Medium" for now (no priority picker in the form).
+const DEFAULT_PRIORITY = TICKET_PRIORITY.find((p) => p.name === "Medium")!;
+// Category mặc định theo từng loại issue — thêm dòng mới ở đây khi có issue mới cần category riêng.
+// Key = giá trị trong ISSUE_OPTIONS (vd "connection_error"), value = id trong TICKET_ATTRIBUTES (Categories).
+const ISSUE_DEFAULT_CATEGORY_ID: Record<string, string> = {
+  connection_error: "28", // Payment Processing
+  // print_error: "25",   // ví dụ: Hardware — bỏ comment và đổi id khi cần
+};
+// Ticket type defaults to "Support".
+const DEFAULT_TICKET_TYPE = TICKET_TYPE.find((t) => t.name === "Support")!;
+// Workstation is hardcoded for now — wire up real value later.
+const DEFAULT_WORKSTATION = { id: "1", name: "Enrich Co Ltd" };
 
 // ─── Types ────────────────────────────────────────────────────────────
 interface Merchant {
@@ -40,6 +59,18 @@ interface EditableFieldProps {
   options?: { label: string; value: string }[];
   onChange: (val: string) => void;
 }
+
+type TicketAttribute = {
+  id: string;
+  refId: string;
+  refName: string;
+  refType: string;
+  role?: string;
+  type?: string;
+};
+
+const ticketAttributes: TicketAttribute[] = [];
+const ticketAssigns: TicketAttribute[] = [];
 
 const EditableField: React.FC<EditableFieldProps> = ({
   label, icon, value, placeholder = "—", type = "text", options = [], onChange,
@@ -173,8 +204,10 @@ const defaultFilter = {
 };
 
 const TaskPage = () => {
+  const { userInfo } = useAuth();
   const [filter] = useState(defaultFilter);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [selectedMerchant, setSelectedMerchant] = useState<string>();
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
@@ -196,6 +229,46 @@ const TaskPage = () => {
     ? "Q_" + selectedIssues.map((v) => ISSUE_OPTIONS.find((o) => o.value === v)?.label ?? v).join(", ")
     : undefined;
 
+  // Build a plain-text summary from the currently selected fields (used as ticket.description)
+  const buildDescription = () => {
+    const lines: string[] = [];
+    if (merchantLabel) lines.push(`Merchant: ${merchantLabel}`);
+    if (titleLabel) lines.push(`Issue: ${titleLabel}`);
+    if (selectedContacts.length) {
+      const contactLabels = selectedContacts.map((k) => CONTACT_METHOD_CONFIG[k]?.label ?? k);
+      lines.push(`Contact: ${contactLabels.join(", ")}`);
+    }
+    if (isTerminalError) {
+      if (miVersion) {
+        const v = MI_VERSION_OPTIONS.find((o) => o.value === miVersion)?.label ?? miVersion;
+        lines.push(`M.I version: ${v}`);
+      }
+      if (device) {
+        const d = DEVICE_OPTIONS.find((o) => o.value === device)?.label ?? device;
+        lines.push(`Device: ${d}`);
+      }
+      if (disconnectTimeStr) lines.push(`Disconnect time: ${disconnectTimeStr}`);
+      if (resolveKeys.length) {
+        const resolveLabels = resolveKeys.map((k) => RESOLVE_OPTIONS.find((o) => o.key === k)?.label ?? k);
+        lines.push(`Resolve: ${resolveLabels.join(", ")}`);
+      }
+    }
+    return lines.join("<br/>");
+  };
+
+  // Map every selected contact method to its own Direction ticket attribute
+  const getDirectionAttributes = () => {
+    return selectedContacts
+      .map((contactKey) => TICKET_DIRECTION.find((d) => d.name === contactKey))
+      .filter((d): d is typeof TICKET_DIRECTION[number] => !!d)
+      .map((direction) => ({
+        id: "",
+        refId: direction.id,
+        refName: direction.name,
+        refType: "Direction",
+      }));
+  };
+
   const handleSearchMerchant = (value: string) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     if (!value.trim()) { setOptions([]); return; }
@@ -216,7 +289,7 @@ const TaskPage = () => {
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 0);
   };
 
   const handleToggleContact = (key: string) => {
@@ -231,7 +304,7 @@ const TaskPage = () => {
     );
   };
 
-  const handleAddTask = () => {
+  const handleAddTask = async () => {
     if (!selectedMerchant) return message.warning("Please choose a salon first");
     if (selectedIssues.length === 0) return message.warning("Please select at least one issue type.");
     if (!selectedContacts.length) return message.warning("Please select a contact method.");
@@ -240,35 +313,112 @@ const TaskPage = () => {
       return message.warning("Please fill in all Terminal details (Version, Device, Time).");
     }
 
-    const newTask: Task = {
-      id: Date.now().toString(),
-      merchantId: selectedMerchant,
-      merchantName: merchantLabel,
-      issueTypes: selectedIssues,
-      contactMethods: selectedContacts,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      miVersion: isTerminalError ? miVersion : undefined,
-      device: isTerminalError ? device : undefined,
-      disconnectTime: isTerminalError && disconnectTime ? disconnectTime.format("HH:mm") : undefined,
-      resolveSteps: resolveKeys,
+
+   
+    if (userInfo?.id) {
+      ticketAssigns.push({
+        id: "",
+        refId: userInfo.id,
+        refName: userInfo.userName ?? userInfo.name,
+        refType: "user",
+        role: "Primary",
+        type: "Assign",
+      });
+    }
+
+    ticketAttributes.push({
+      id: "",
+      refId: DEFAULT_PRIORITY.id,
+      refName: DEFAULT_PRIORITY.name,
+      refType: "Priority",
+    });
+
+    const directionAttrs = getDirectionAttributes();
+    ticketAttributes.push(...directionAttrs);
+
+    // Mỗi issue được chọn có thể có 1 category mặc định riêng (xem ISSUE_DEFAULT_CATEGORY_ID).
+    // Dùng Set để tránh thêm trùng category nếu nhiều issue cùng trỏ tới 1 category.
+    const categoryIds = new Set(
+      selectedIssues
+        .map((issue) => ISSUE_DEFAULT_CATEGORY_ID[issue])
+        .filter((id): id is string => !!id)
+    );
+    categoryIds.forEach((catId) => {
+      const category = TICKET_ATTRIBUTES.find((a) => a.id === catId);
+      if (!category) return;
+      ticketAttributes.push({
+        id: "",
+        refId: category.id,
+        refName: category.name,
+        refType: "Categories",
+      });
+    });
+
+
+    // ── Build full payload for /api/Ticket/CreateOrUpdate ──
+    const payload = {
+      workstationId: DEFAULT_WORKSTATION.id,
+      workstationName: DEFAULT_WORKSTATION.name,
+      ticketAttributes,
+      ticketAssigns,
+      ticket: {
+        ticketTypeName: DEFAULT_TICKET_TYPE.name,
+        ticketTypeId: DEFAULT_TICKET_TYPE.id,
+        templateName: null,
+        template: false,
+        stageName: null,
+        stageId: null,
+        sla: 24,
+        name: titleLabel,
+        merchantId: selectedMerchant,
+        id: null,
+        description: buildDescription(),
+        customerName: merchantLabel,
+        customerId: selectedMerchant,
+        attachment: null,
+      },
     };
 
-    setTasks((prev) => [newTask, ...prev]);
+    try {
+      setSubmitting(true);
+      await CreateOrUpdate(payload);
 
-    // Reset
-    setSelectedMerchant(undefined);
-    setSelectedIssues([]);
-    setSelectedContacts([]);
-    setMiVersion(undefined);
-    setDevice(undefined);
-    setDisconnectTime(null);
-    setDisconnectTimeStr(undefined);
-    setResolveKeys([]);
-    setOptions([]);
+      const newTask: Task = {
+        id: Date.now().toString(),
+        merchantId: selectedMerchant,
+        merchantName: merchantLabel,
+        issueTypes: selectedIssues,
+        contactMethods: selectedContacts,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        miVersion: isTerminalError ? miVersion : undefined,
+        device: isTerminalError ? device : undefined,
+        disconnectTime: isTerminalError && disconnectTime ? disconnectTime.format("HH:mm") : undefined,
+        resolveSteps: resolveKeys,
+      };
 
-    message.success("Task added!");
+      setTasks((prev) => [newTask, ...prev]);
+
+      // Reset
+      setSelectedMerchant(undefined);
+      setSelectedIssues([]);
+      setSelectedContacts([]);
+      setMiVersion(undefined);
+      setDevice(undefined);
+      setDisconnectTime(null);
+      setDisconnectTimeStr(undefined);
+      setResolveKeys([]);
+      setOptions([]);
+
+      message.success("Task added!");
+    } catch (err) {
+      console.error("Cannot create ticket:", err);
+      message.error("Failed to add task. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
 
   // ── Render ──
   return (
@@ -360,6 +510,8 @@ const TaskPage = () => {
                         setDisconnectTimeStr(val ? val.format("HH:mm") : undefined);
                       }}
                       placeholder="Select time"
+                      use12Hours
+                      showNow
                       style={{ width: "100%" }}
                     />
                   </div>
@@ -398,8 +550,8 @@ const TaskPage = () => {
           </div>
 
           {/* Submit */}
-          <button onClick={handleAddTask} className="submit-btn">
-            <PlusOutlined /> Add task
+          <button onClick={handleAddTask} className="submit-btn" disabled={submitting}>
+            <PlusOutlined /> {submitting ? "Adding..." : "Add task"}
           </button>
         </div>
 
@@ -552,7 +704,7 @@ const TaskPage = () => {
       </div>
 
       {/* Task list */}
-      <TaskList tasks={tasks} />
+      {/* <TaskList tasks={tasks} /> */}
     </div>
   );
 };
