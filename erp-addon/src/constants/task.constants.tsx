@@ -37,7 +37,7 @@ export const ISSUE_OPTIONS = [
 
 export const CONTACT_METHOD_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string; border: string; activeBg: string }> = {
   Inbox: { label: "Inbox", icon: <MailOutlined />, color: "#8b5cf6", border: "#8b5cf6", activeBg: "#f3e8ff" },
-  Inbound: { label: "Call", icon: <PhoneOutlined />, color: "#10b981", border: "#10b981", activeBg: "#d1fae5" },
+  Inbound: { label: "Inbound", icon: <PhoneOutlined />, color: "#10b981", border: "#10b981", activeBg: "#d1fae5" },
   Facetime: { label: "Facetime", icon: <VideoCameraOutlined />, color: "#6b7280", border: "#d1d5db", activeBg: "#f3f4f6" },
   Crisp: { label: "Crisp", icon: <MessageOutlined />, color: "#f59e0b", border: "#f59e0b", activeBg: "#fef3c7" },
   Other: { label: "Other", icon: <EllipsisOutlined />, color: "#6b7280", border: "#d1d5db", activeBg: "#f3f4f6" },

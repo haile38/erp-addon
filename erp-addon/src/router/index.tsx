@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import DashboardPage from "../pages/Dashboard";
-import TaskPage from "../pages/Task";
+import TaskPage from "../pages/Task/TaskPage";
 import KPIPage from "../pages/KPI";
 import SettingPage from "../pages/Setting";
 import LoginPage from "../pages/Login";
