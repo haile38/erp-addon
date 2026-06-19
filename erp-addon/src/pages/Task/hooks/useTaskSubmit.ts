@@ -24,7 +24,7 @@ const ISSUE_DEFAULT_CATEGORY_ID: Record<string, string> = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const buildTitle = (selectedIssues: string[]) =>
   selectedIssues.length > 0
-    ? "Q_" + selectedIssues.map((v) => ISSUE_OPTIONS.find((o) => o.value === v)?.label ?? v).join(", ")
+    ? "Q_NOTE" + selectedIssues.map((v) => ISSUE_OPTIONS.find((o) => o.value === v)?.label ?? v).join(", ")
     : undefined;
 
 const buildDescription = (form: TaskFormState, merchantLabel: string, isTerminalError: boolean) => {
